@@ -3,6 +3,7 @@ pub mod link_checker;
 pub mod search;
 pub mod slugify;
 pub mod taxonomies;
+pub mod theme_css;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -59,6 +60,8 @@ pub struct Config {
     /// Which themes to use for code highlighting. See Readme for supported themes
     /// Defaults to "base16-ocean-dark"
     pub highlight_theme: String,
+    /// Generate CSS files for Themes out of syntect
+    pub highlighting_themes_css: Vec<theme_css::ThemeCss>,
 
     /// Whether to generate a feed. Defaults to false.
     pub generate_feed: bool,
@@ -126,8 +129,10 @@ impl Config {
             bail!("A base URL is required in config.toml with key `base_url`");
         }
 
-        if !THEME_SET.themes.contains_key(&config.highlight_theme) {
-            bail!("Highlight theme {} not available", config.highlight_theme)
+        if &config.highlight_theme != "css" {
+            if !THEME_SET.themes.contains_key(&config.highlight_theme) {
+                bail!("Highlight theme {} not available", config.highlight_theme)
+            }
         }
 
         if config.languages.iter().any(|l| l.code == config.default_language) {
@@ -319,6 +324,7 @@ impl Default for Config {
             theme: None,
             highlight_code: false,
             highlight_theme: "base16-ocean-dark".to_string(),
+            highlighting_themes_css: Vec::new(),
             default_language: "en".to_string(),
             languages: Vec::new(),
             generate_feed: false,
@@ -565,6 +571,21 @@ ignored_content = ["*.{graphml,iso}", "*.py?"]
         assert!(g.is_match("foo.py2"));
         assert!(g.is_match("foo.py3"));
         assert!(!g.is_match("foo.py"));
+    }
+
+    #[test]
+    fn can_parse_theme_css() {
+        let config_str = r#"
+title = "My site"
+base_url = "example.com"
+highlighting_themes_css = [
+  { theme = "theme-0", filename = "theme-0.css" },
+  { theme = "theme-1", filename = "theme-1.css" },
+]
+        "#;
+        let config = Config::parse(config_str).unwrap();
+        let css_themes = config.highlighting_themes_css;
+        assert_eq!(css_themes.len(), 2);
     }
 
     #[test]
