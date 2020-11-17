@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use pulldown_cmark as cmark;
 use regex::Regex;
-use syntect::html::{start_highlighted_html_snippet, IncludeBackground};
+use syntect::html::IncludeBackground;
 
 use crate::context::RenderContext;
 use crate::table_of_contents::{make_table_of_contents, Heading};
@@ -12,7 +12,7 @@ use utils::site::resolve_internal_link;
 use utils::slugs::slugify_anchors;
 use utils::vec::InsertMany;
 
-use self::cmark::{Event, LinkType, Options, Parser, Tag};
+use self::cmark::{CowStr, Event, LinkType, Options, Parser, Tag};
 use pulldown_cmark::CodeBlockKind;
 
 mod codeblock;
@@ -199,8 +199,8 @@ pub fn markdown_to_html(content: &str, context: &RenderContext) -> Result<Render
                     Event::Text(text) => {
                         // if we are in the middle of a highlighted code block
                         if let Some(ref mut code_block) = highlighter {
-                            let html = code_block.highlight(&text);
-                            Event::Html(html.into())
+                            code_block.add_text(&text);
+                            Event::Html(CowStr::from(""))
                         } else {
                             if context.config.emoji_rendering {
                                 let processed_text = EMOJI_REPLACER.replace_all(&text);
@@ -228,42 +228,51 @@ pub fn markdown_to_html(content: &str, context: &RenderContext) -> Result<Render
                             return Event::Html("<pre><code>".into());
                         }
 
-                        let theme = &THEME_SET.themes[&context.config.highlight_theme];
+                        // This selects the background color the same way that
+                        // start_coloured_html_snippet does
+                        let color = THEME_SET.themes.get(&context.config.highlight_theme)
+                        .and_then(|theme| {
+                            theme.settings.background
+                        })
+                        .unwrap_or(::syntect::highlighting::Color::WHITE);
+                        
                         match kind {
                             CodeBlockKind::Indented => (),
                             CodeBlockKind::Fenced(fence_info) => {
-                                // This selects the background color the same way that
-                                // start_coloured_html_snippet does
-                                let color = theme
-                                    .settings
-                                    .background
-                                    .unwrap_or(::syntect::highlighting::Color::WHITE);
-
+                                
                                 highlighter = Some(CodeBlock::new(
                                     fence_info,
                                     &context.config,
-                                    IncludeBackground::IfDifferent(color),
+                                    if &context.config.highlight_theme != "css" {
+                                        IncludeBackground::IfDifferent(color)
+                                    } else {
+                                        IncludeBackground::Yes
+                                    }
                                 ));
                             }
                         };
-                        let snippet = start_highlighted_html_snippet(theme);
-                        let mut html = snippet.0;
-                        if let Some(lang) = language {
-                            html.push_str(r#"<code class="language-"#);
-                            html.push_str(lang);
-                            html.push_str(r#"">"#);
+
+                        let pre_style_str = if context.config.highlight_theme != "css" {
+                            format!(r#" style="background-color:#{:02x}{:02x}{:02x};""#, 
+                                color.r, color.g, color.b
+                            )
                         } else {
-                            html.push_str("<code>");
-                        }
-                        Event::Html(html.into())
+                            "".into()
+                        };
+                        let code_str = if let Some(lang) = language {
+                            format!(r#" class="language-{}""#, lang)
+                        } else {
+                            "".into()
+                        };
+                        Event::Html(format!("<pre{}><code{}>", pre_style_str, code_str).into())
                     }
                     Event::End(Tag::CodeBlock(_)) => {
-                        if !context.config.highlight_code {
-                            return Event::Html("</code></pre>\n".into());
+                        if let Some(highlighter) = highlighter.take() {
+                            // reset highlight and close the code block
+                            Event::Html(CowStr::from(highlighter.highlight() + "</code></pre>"))
+                        } else {
+                            Event::Html("</code></pre>".into())
                         }
-                        // reset highlight and close the code block
-                        highlighter = None;
-                        Event::Html("</code></pre>".into())
                     }
                     Event::Start(Tag::Image(link_type, src, title)) => {
                         if is_colocated_asset_link(&src) {
