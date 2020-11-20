@@ -76,7 +76,7 @@ impl<'config> CodeBlock<'config> {
             // If there's a theme (even without a background set), then set a background:
             let color = get_theme_background(theme);
             format!(" style=\"background-color:#{:02x}{:02x}{:02x};\"", color.r, color.g, color.b)
-        }).unwrap_or(" class=\"code\"".into());
+        }).unwrap_or(" class=\"code\" style=\"counter-reset: linenumbers;\"".into());
 
         let code_class = self.language.map(|lang| format!(" class=\"language-{}\"", lang)).unwrap_or("".into());
 
@@ -84,11 +84,12 @@ impl<'config> CodeBlock<'config> {
 
         let mut parser = ParseState::new(self.syntax);
         let mut scope_stack = ScopeStack::new();
-        let mut unclosed_spans = 0usize;
+        let mut open_spans = Vec::new();
         for line in self.contents.split_inclusive('\n') {
-            // if self.line_numbers {
-            //     html += "<span class=\"code-line\">"
-            // }
+            if self.line_numbers {
+                html += r#"<span class="code-line">"#;
+                html.extend(open_spans.iter().map(|s| s as &str));
+            }
 
             let tokens = parser.parse_line(line, self.syntax_set);
             if let Some((ref highlighter, ref mut highlight_state, theme)) = highlighter.as_mut() {
@@ -108,34 +109,37 @@ impl<'config> CodeBlock<'config> {
                     scope_stack.apply_with_hook(op, |basic_op, _| match basic_op {
                         BasicScopeStackOp::Pop => {
                             html += "</span>";
-                            unclosed_spans -= 1;
+                            open_spans.pop();
                         },
                         BasicScopeStackOp::Push(scope) => {
-                            html += "<span class=\"";
+                            let mut classes = String::new();
                             for i in 0..(scope.len()) {
                                 let atom = scope.atom_at(i as usize);
                                 let atom_s = repo.atom_str(atom);
                                 if i != 0 {
-                                    html.push_str(" ");
+                                    classes.push_str(" ");
                                 }
-                                html.push_str(atom_s);
+                                classes.push_str(atom_s);
                             }
-                            html += "\">";
-                            unclosed_spans += 1;
+                            open_spans.push(format!(r#"<span class="{}">"#, classes));
+                            html += open_spans.last().unwrap().as_ref();
                         }
                     });
                 });
                 encode_text_to_string(&line[prev_i..], &mut html);
             }
-            
-            // if self.line_numbers {
-            //     html += "</span>"
-            // }
+
+            if self.line_numbers {
+                // Close all the open spans...
+                html.extend((0..(open_spans.len())).map(|_| "</span>"));
+
+                // ...Close our line span
+                html += "</span>";
+            }
         }
 
-        for _ in 0..unclosed_spans {
-            html += "</span>";
-        }
+        
+        html.extend((0..(open_spans.len())).map(|_| "</span>"));
 
         html += "</code></pre>";
         html
