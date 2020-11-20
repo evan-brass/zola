@@ -1,12 +1,9 @@
 use lazy_static::lazy_static;
-use syntect::dumps::from_binary;
-use syntect::easy::HighlightLines;
-use syntect::highlighting::ThemeSet;
-use syntect::html::{
-    ClassedHTMLGenerator,
-    ClassStyle
+use syntect::{
+    dumps::from_binary,
+    highlighting::{Theme, ThemeSet},
+    parsing::{SyntaxReference, SyntaxSet},
 };
-use syntect::parsing::SyntaxSet;
 
 use crate::config::Config;
 
@@ -20,73 +17,72 @@ lazy_static! {
         from_binary(include_bytes!("../../../sublime/themes/all.themedump"));
 }
 
-pub enum Highlighter<'config> {
-    Inline(HighlightLines<'static>, &'config SyntaxSet),
-    Class(ClassedHTMLGenerator<'config>)
+pub struct SyntaxAndTheme<'config> {
+    pub syntax: &'config SyntaxReference,
+    pub syntax_set: &'config SyntaxSet,
+    pub theme: Option<&'config Theme>,
 }
 
 /// Returns the highlighter and whether it was found in the extra or not
-pub fn get_highlighter<'config>(
+pub fn resolve_syntax_and_theme<'config>(
     language: Option<&str>,
     config: &'config Config,
-) -> Highlighter<'config> {
-    let (syntax, syntax_set) = language
-        .map(|lang| {
+) -> SyntaxAndTheme<'config> {
+    let theme = if config.highlight_theme != "css" {
+        Some(&THEME_SET.themes[&config.highlight_theme])
+    } else {
+        None
+    };
+
+    language
+        .and_then(|lang| {
             SYNTAX_SET
                 .find_syntax_by_token(lang)
-                .map(|syntax| (syntax, &SYNTAX_SET as &SyntaxSet))
+                .map(|syntax| SyntaxAndTheme {
+                    syntax,
+                    syntax_set: &SYNTAX_SET as &SyntaxSet,
+                    theme,
+                })
                 .or_else(|| {
-                    config
-                        .extra_syntax_set
-                        .as_ref()
-                        .map(|extra| extra.find_syntax_by_token(lang).map(|s| (s, extra)))
-                        .flatten()
+                    config.extra_syntax_set.as_ref().and_then(|extra| {
+                        extra.find_syntax_by_token(lang).map(|syntax| SyntaxAndTheme {
+                            syntax,
+                            syntax_set: extra,
+                            theme,
+                        })
+                    })
                 })
         })
-        .flatten()
-        .unwrap_or_else(|| (SYNTAX_SET.find_syntax_plain_text(), &SYNTAX_SET));
-
-    if config.highlight_theme != "css" {
-        let theme = &THEME_SET.themes[&config.highlight_theme];
-        Highlighter::Inline(HighlightLines::new(syntax, theme), syntax_set)
-    } else {
-        Highlighter::Class(ClassedHTMLGenerator::new_with_class_style(
-            syntax,
-            syntax_set,
-            ClassStyle::Spaced,
-        ))
-    }
+        .unwrap_or_else(|| SyntaxAndTheme {
+            syntax: SYNTAX_SET.find_syntax_plain_text(),
+            syntax_set: &SYNTAX_SET,
+            theme,
+        })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use syntect::html::{ClassStyle, ClassedHTMLGenerator};
     #[test]
     fn classed_json_trouble() {
         let ss_new = SyntaxSet::load_defaults_newlines();
         let ss_no = SyntaxSet::load_defaults_nonewlines();
 
-        let sets = [
-            &ss_new,
-            &ss_no,
-            &SYNTAX_SET
-        ];
+        let sets = [&ss_new, &ss_no, &SYNTAX_SET];
         for set in sets.iter() {
             let syntax = set.find_syntax_by_name("JSON").unwrap();
 
-            let mut h = ClassedHTMLGenerator::new_with_class_style(
-                &syntax,
-                &set,
-                ClassStyle::Spaced
-            );
-    
+            let mut h =
+                ClassedHTMLGenerator::new_with_class_style(&syntax, &set, ClassStyle::Spaced);
+
             let source = r#"
     {
         "a": {
         }
     }
             "#;
-    
+
             for line in source.lines() {
                 h.parse_html_for_line(line);
             }

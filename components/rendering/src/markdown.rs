@@ -1,11 +1,9 @@
 use lazy_static::lazy_static;
 use pulldown_cmark as cmark;
 use regex::Regex;
-use syntect::html::IncludeBackground;
 
 use crate::context::RenderContext;
 use crate::table_of_contents::{make_table_of_contents, Heading};
-use config::highlighting::THEME_SET;
 use errors::{Error, Result};
 use front_matter::InsertAnchor;
 use utils::site::resolve_internal_link;
@@ -177,7 +175,7 @@ pub fn markdown_to_html(content: &str, context: &RenderContext) -> Result<Render
     // Set while parsing
     let mut error = None;
 
-    let mut highlighter: Option<CodeBlock> = None;
+    let mut code_block: Option<CodeBlock> = None;
 
     let mut inserted_anchors: Vec<String> = vec![];
     let mut headings: Vec<Heading> = vec![];
@@ -198,7 +196,7 @@ pub fn markdown_to_html(content: &str, context: &RenderContext) -> Result<Render
                 match event {
                     Event::Text(text) => {
                         // if we are in the middle of a highlighted code block
-                        if let Some(ref mut code_block) = highlighter {
+                        if let Some(ref mut code_block) = code_block {
                             code_block.add_text(&text);
                             Event::Html(CowStr::from(""))
                         } else {
@@ -227,49 +225,22 @@ pub fn markdown_to_html(content: &str, context: &RenderContext) -> Result<Render
                             }
                             return Event::Html("<pre><code>".into());
                         }
-
-                        // This selects the background color the same way that
-                        // start_coloured_html_snippet does
-                        let color = THEME_SET.themes.get(&context.config.highlight_theme)
-                        .and_then(|theme| {
-                            theme.settings.background
-                        })
-                        .unwrap_or(::syntect::highlighting::Color::WHITE);
                         
                         match kind {
                             CodeBlockKind::Indented => (),
                             CodeBlockKind::Fenced(fence_info) => {
-                                
-                                highlighter = Some(CodeBlock::new(
+                                code_block = Some(CodeBlock::new(
                                     fence_info,
-                                    &context.config,
-                                    if &context.config.highlight_theme != "css" {
-                                        IncludeBackground::IfDifferent(color)
-                                    } else {
-                                        IncludeBackground::Yes
-                                    }
+                                    &context.config
                                 ));
                             }
                         };
-
-                        let pre_style_str = if context.config.highlight_theme != "css" {
-                            format!(r#" style="background-color:#{:02x}{:02x}{:02x};""#, 
-                                color.r, color.g, color.b
-                            )
-                        } else {
-                            "".into()
-                        };
-                        let code_str = if let Some(lang) = language {
-                            format!(r#" class="language-{}""#, lang)
-                        } else {
-                            "".into()
-                        };
-                        Event::Html(format!("<pre{}><code{}>", pre_style_str, code_str).into())
+                        Event::Html(CowStr::from(""))
                     }
                     Event::End(Tag::CodeBlock(_)) => {
-                        if let Some(highlighter) = highlighter.take() {
+                        if let Some(highlighter) = code_block.take() {
                             // reset highlight and close the code block
-                            Event::Html(CowStr::from(highlighter.highlight() + "</code></pre>"))
+                            Event::Html(CowStr::from(highlighter.highlight()))
                         } else {
                             Event::Html("</code></pre>".into())
                         }
