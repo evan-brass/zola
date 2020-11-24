@@ -9,6 +9,7 @@ use syntect::html::{
     start_highlighted_html_snippet, styled_line_to_highlighted_html, IncludeBackground,
 };
 use syntect::parsing::{BasicScopeStackOp, ParseState, ScopeStack, SyntaxSet, SCOPE_REPO};
+use syntect::util::LinesWithEndings;
 
 use super::fence::{FenceSettings, Range};
 
@@ -141,7 +142,7 @@ impl<'config, 'fence_info> CodeBlock<'config> {
                     SCOPE_REPO.lock().expect("A thread must have poisened the scope repo mutex.");
                 let mut html = String::new();
                 // TODO: Use something other than split_inclusive because it requires a nightly feature:
-                for line in text.split_inclusive('\n') {
+                for line in LinesWithEndings::from(text) {
                     let tokens = parser.parse_line(line, self.syntax_set);
                     let mut prev_i = 0usize;
                     tokens.iter().for_each(|(i, op)| {

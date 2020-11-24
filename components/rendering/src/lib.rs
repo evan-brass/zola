@@ -1,4 +1,3 @@
-#![feature(split_inclusive)]
 mod context;
 mod markdown;
 mod shortcode;
