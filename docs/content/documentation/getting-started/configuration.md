@@ -36,12 +36,12 @@ default_language = "en"
 # The site theme to use.
 theme = ""
 
-# When set to "true", all code blocks are highlighted.
-highlight_code = false
-
-# The theme to use for code highlighting.
-# See below for list of allowed values.
-highlight_theme = "base16-ocean-dark"
+# If the site uses some of the predefined syntax highlighing schemes as
+# CSS, you can let Zola generate the CSS.
+highlighting_themes_css = [
+  { theme = "base16-ocean-dark", filename = "syntax-theme-dark.css" },
+  { theme = "base16-ocean-light", filename = "syntax-theme-light.css" },
+]
 
 # When set to "true", a feed is automatically generated.
 generate_feed = false
@@ -86,6 +86,9 @@ languages = []
 # Sass files in theme directories are always compiled.
 compile_sass = false
 
+# When set to "true", the generated HTML files are minified.
+minify_html = false
+
 # A list of glob patterns specifying asset files to ignore when the content
 # directory is processed. Defaults to none, which means that all asset files are
 # copied over to the `public` directory.
@@ -95,6 +98,36 @@ ignored_content = []
 
 # A list of directories used to search for additional `.sublime-syntax` files.
 extra_syntaxes = []
+
+# You can override the default output directory `public` by setting an another value.
+# output_dir = "docs"
+
+# Configuration of the Markdown rendering
+[markdown]
+# When set to "true", all code blocks are highlighted.
+highlight_code = false
+
+# The theme to use for code highlighting.
+# This will put the colors of the theme directly in your html.
+# See below for list of allowed values.
+highlight_theme = "base16-ocean-dark"
+# For using CSS class definitions in the higlighting, you can use the
+# special theme "css". This is especially useful for dark/light themes,
+# or letting the user decide the higlighting scheme.
+
+# When set to "true", emoji aliases translated to their corresponding
+# Unicode emoji equivalent in the rendered Markdown files. (e.g.: :smile: => 😄)
+render_emoji = false
+
+# Whether external links are to be opened in a new tab
+# If this is true, a `rel="noopener"` will always automatically be added for security reasons
+external_links_target_blank = false
+
+# Whether to set rel="nofollow" for all external links
+external_links_no_follow = false
+
+# Whether to set rel="noreferrer" for all external links
+external_links_no_referrer = false
 
 # Configuration of the link checker.
 [link_checker]

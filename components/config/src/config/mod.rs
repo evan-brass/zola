@@ -1,8 +1,10 @@
 pub mod languages;
 pub mod link_checker;
+pub mod markup;
 pub mod search;
 pub mod slugify;
 pub mod taxonomies;
+pub mod theme_css;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -59,6 +61,8 @@ pub struct Config {
     /// Which themes to use for code highlighting. See Readme for supported themes
     /// Defaults to "base16-ocean-dark"
     pub highlight_theme: String,
+    /// Generate CSS files for Themes out of syntect
+    pub highlighting_themes_css: Vec<theme_css::ThemeCss>,
 
     /// Whether to generate a feed. Defaults to false.
     pub generate_feed: bool,
@@ -96,6 +100,8 @@ pub struct Config {
     #[serde(skip_serializing, skip_deserializing)] // not a typo, 2 are need
     pub extra_syntax_set: Option<SyntaxSet>,
 
+    pub output_dir: String,
+
     pub link_checker: link_checker::LinkChecker,
 
     /// The setup for which slugification strategies to use for paths, taxonomies and anchors
@@ -103,6 +109,9 @@ pub struct Config {
 
     /// The search config, telling what to include in the search index
     pub search: search::Search,
+
+    /// The config for the Markdown rendering: syntax highlighting and everything
+    pub markdown: markup::Markdown,
 
     /// All user params set in [extra] in the config
     pub extra: HashMap<String, Toml>,
@@ -121,8 +130,10 @@ impl Config {
             bail!("A base URL is required in config.toml with key `base_url`");
         }
 
-        if !THEME_SET.themes.contains_key(&config.highlight_theme) {
-            bail!("Highlight theme {} not available", config.highlight_theme)
+        if config.highlight_theme() != "css" {
+            if !THEME_SET.themes.contains_key(config.highlight_theme()) {
+                bail!("Highlight theme {} not available", config.highlight_theme())
+            }
         }
 
         if config.languages.iter().any(|l| l.code == config.default_language) {
@@ -153,8 +164,9 @@ impl Config {
             }
         }
 
-        // TODO: re-enable once it's a bit more tested
-        config.minify_html = false;
+        if config.highlight_code {
+            println!("`highlight_code` has been moved to a [markdown] section. Top level `highlight_code` and `highlight_theme` will stop working in 0.14.");
+        }
 
         Ok(config)
     }
@@ -168,6 +180,30 @@ impl Config {
             &format!("No `{:?}` file found. Are you in the right directory?", file_name),
         )?;
         Config::parse(&content)
+    }
+
+    /// Temporary, while we have the settings in 2 places
+    /// TODO: remove me in 0.14
+    pub fn highlight_code(&self) -> bool {
+        if !self.highlight_code && !self.markdown.highlight_code {
+            return false;
+        }
+
+        if self.highlight_code {
+            true
+        } else {
+            self.markdown.highlight_code
+        }
+    }
+
+    /// Temporary, while we have the settings in 2 places
+    /// TODO: remove me in 0.14
+    pub fn highlight_theme(&self) -> &str {
+        if self.highlight_theme != markup::DEFAULT_HIGHLIGHT_THEME {
+            &self.highlight_theme
+        } else {
+            &self.markdown.highlight_theme
+        }
     }
 
     /// Attempt to load any extra syntax found in the extra syntaxes of the config
@@ -317,6 +353,7 @@ impl Default for Config {
             theme: None,
             highlight_code: false,
             highlight_theme: "base16-ocean-dark".to_string(),
+            highlighting_themes_css: Vec::new(),
             default_language: "en".to_string(),
             languages: Vec::new(),
             generate_feed: false,
@@ -333,9 +370,11 @@ impl Default for Config {
             translations: HashMap::new(),
             extra_syntaxes: Vec::new(),
             extra_syntax_set: None,
+            output_dir: "public".to_string(),
             link_checker: link_checker::LinkChecker::default(),
             slugify: slugify::Slugify::default(),
             search: search::Search::default(),
+            markdown: markup::Markdown::default(),
             extra: HashMap::new(),
         }
     }
@@ -564,6 +603,21 @@ ignored_content = ["*.{graphml,iso}", "*.py?"]
     }
 
     #[test]
+    fn can_parse_theme_css() {
+        let config_str = r#"
+title = "My site"
+base_url = "example.com"
+highlighting_themes_css = [
+  { theme = "theme-0", filename = "theme-0.css" },
+  { theme = "theme-1", filename = "theme-1.css" },
+]
+        "#;
+        let config = Config::parse(config_str).unwrap();
+        let css_themes = config.highlighting_themes_css;
+        assert_eq!(css_themes.len(), 2);
+    }
+
+    #[test]
     fn link_checker_skip_anchor_prefixes() {
         let config_str = r#"
 title = "My site"
@@ -653,5 +707,28 @@ bar = "baz"
         let theme = Theme::parse(theme_str).unwrap();
         // We expect an error here
         assert_eq!(false, config.add_theme_extra(&theme).is_ok());
+    }
+
+    #[test]
+    fn default_output_dir() {
+        let config = r#"
+title = "My site"
+base_url = "https://replace-this-with-your-url.com"
+        "#;
+
+        let config = Config::parse(config).unwrap();
+        assert_eq!(config.output_dir, "public".to_string());
+    }
+
+    #[test]
+    fn can_add_output_dir() {
+        let config = r#"
+title = "My site"
+base_url = "https://replace-this-with-your-url.com"
+output_dir = "docs"
+        "#;
+
+        let config = Config::parse(config).unwrap();
+        assert_eq!(config.output_dir, "docs".to_string());
     }
 }
