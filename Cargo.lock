@@ -52,6 +52,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "arrayvec"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
+
+[[package]]
+name = "asciimath-rs"
+version = "0.5.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "033d0b4b21852b09c3275d631934891f9b8edb42d7d91349bc50d30f19cc2fd3"
+dependencies = [
+ "charred",
+ "htmlescape",
+ "lazy_static",
+ "maplit",
+]
+
+[[package]]
 name = "assert-json-diff"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -162,6 +180,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 
 [[package]]
+name = "bytecount"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f861d9ce359f56dbcb6e0c2a1cb84e52ad732cadb57b806adeb3c7668caccbd8"
+
+[[package]]
+name = "bytecount"
+version = "0.6.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72feb31ffc86498dacdbd0fcebb56138e7177a8cc5cea4516031d15ae85a742e"
+
+[[package]]
 name = "bytemuck"
 version = "1.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -215,6 +245,12 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
+name = "charred"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e01302bf6a3d92a90baa965f84a735938520ab9fd896f0694a71e8dec5405ce"
 
 [[package]]
 name = "chrono"
@@ -899,6 +935,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "htmlescape"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e9025058dae765dee5070ec375f591e2ba14638c63feff74f13805a72e523163"
+
+[[package]]
 name = "http"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1166,6 +1208,19 @@ name = "levenshtein_automata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73a004f877f468548d8d0ac4977456a249d8fabbdb8416c36db163dfc8f2e8ca"
+
+[[package]]
+name = "lexical-core"
+version = "0.7.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "db65c6da02e61f55dae90a0ae427b2a5f6b3e8db09f58d10efab23af92592616"
+dependencies = [
+ "arrayvec",
+ "bitflags",
+ "cfg-if 0.1.10",
+ "ryu",
+ "static_assertions",
+]
 
 [[package]]
 name = "libc"
@@ -1490,6 +1545,73 @@ dependencies = [
  "cc",
  "cfg-if 0.1.10",
  "libc",
+]
+
+[[package]]
+name = "nom"
+version = "5.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffb4262d26ed83a1c0a33a38fe2bb15797329c85770da05e6b828ddb782627af"
+dependencies = [
+ "lexical-core",
+ "memchr",
+ "version_check",
+]
+
+[[package]]
+name = "nom-bibtex"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9db257f6c7b9c8b3ab67ee6a4b23a290c157d183fef2ac065bf9fce5f1c1299"
+dependencies = [
+ "nom",
+ "nom-tracable",
+ "nom_locate 2.1.0",
+ "quick-error",
+]
+
+[[package]]
+name = "nom-tracable"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e012c742e1269f801f6bfe0d1ebf99d7a3f7bc1d65c970bab0e7bee439e31610"
+dependencies = [
+ "nom",
+ "nom-tracable-macros",
+ "nom_locate 1.0.0",
+ "nom_locate 2.1.0",
+]
+
+[[package]]
+name = "nom-tracable-macros"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65ad630ff46d4c61da89042f327e6fdf104a6ebb667565727ef0bb294a7c3197"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "nom_locate"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f932834fd8e391fc7710e2ba17e8f9f8645d846b55aa63207e17e110a1e1ce35"
+dependencies = [
+ "bytecount 0.3.2",
+ "memchr",
+ "nom",
+]
+
+[[package]]
+name = "nom_locate"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a67484adf5711f94f2f28b653bf231bff8e438be33bf5b0f35935a0db4f618a2"
+dependencies = [
+ "bytecount 0.6.2",
+ "memchr",
+ "nom",
 ]
 
 [[package]]
@@ -1857,6 +1979,12 @@ dependencies = [
  "memchr",
  "unicase",
 ]
+
+[[package]]
+name = "quick-error"
+version = "1.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 
 [[package]]
 name = "quote"
@@ -2329,6 +2457,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
 name = "string_cache"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2440,6 +2574,7 @@ dependencies = [
 name = "templates"
 version = "0.1.0"
 dependencies = [
+ "asciimath-rs",
  "base64 0.13.0",
  "config",
  "csv",
@@ -2449,6 +2584,7 @@ dependencies = [
  "lazy_static",
  "library",
  "mockito",
+ "nom-bibtex",
  "pulldown-cmark",
  "reqwest",
  "serde_json",

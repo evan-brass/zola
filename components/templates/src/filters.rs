@@ -4,6 +4,23 @@ use std::hash::BuildHasher;
 use base64::{decode, encode};
 use pulldown_cmark as cmark;
 use tera::{to_value, try_get_value, Result as TeraResult, Value};
+use asciimath_rs::format::mathml::ToMathML;
+
+pub struct AsciiMath {}
+
+impl tera::Filter for AsciiMath {
+    fn filter(&self, 
+        value: &Value,
+        _args: &HashMap<String, Value>
+    ) -> TeraResult<Value> {
+        let s = try_get_value!("ascii_math", "value", String, value);
+        let exp = asciimath_rs::parse(s);
+        Ok(Value::String(exp.to_mathml()))
+    }
+    fn is_safe(&self) -> bool {
+        true
+    }
+}
 
 pub fn markdown<S: BuildHasher>(
     value: &Value,
